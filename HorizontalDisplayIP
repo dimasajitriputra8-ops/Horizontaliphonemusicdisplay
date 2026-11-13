@@ -1,0 +1,4443 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+/>
+
+<meta name="theme-color" content="#071b29" />
+
+<title>DERBAYS Music Player</title>
+
+<style>
+/* =========================================================
+   DERBAYS MUSIC PLAYER
+   Single-file HTML
+   ========================================================= */
+
+:root {
+  --accent: #dce8ef;
+  --accent-strong: #ffffff;
+  --text: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.66);
+  --text-dim: rgba(255, 255, 255, 0.42);
+
+  --glass: rgba(18, 26, 33, 0.42);
+  --glass-strong: rgba(12, 19, 25, 0.62);
+
+  --player-width: 760px;
+  --player-radius: 46px;
+
+  --dynamic-width: 176px;
+  --dynamic-height: 42px;
+
+  --transition-fast: 180ms cubic-bezier(.2,.8,.2,1);
+  --transition-normal: 380ms cubic-bezier(.2,.8,.2,1);
+  --transition-slow: 650ms cubic-bezier(.16,1,.3,1);
+}
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100svh;
+  overflow-x: hidden;
+
+  background: #071b29;
+  color: var(--text);
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* =========================================================
+   BACKGROUND
+   ========================================================= */
+
+.background {
+  position: fixed;
+  inset: -80px;
+
+  z-index: 0;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      135deg,
+      #153d53,
+      #082536 45%,
+      #061722
+    );
+}
+
+.background-art {
+  position: absolute;
+  inset: -70px;
+
+  width: calc(100% + 140px);
+  height: calc(100% + 140px);
+
+  object-fit: cover;
+
+  filter:
+    blur(58px)
+    saturate(1.15)
+    brightness(0.58);
+
+  transform: scale(1.12);
+
+  opacity: 0.94;
+
+  transition:
+    opacity 500ms ease,
+    transform 800ms cubic-bezier(.16,1,.3,1),
+    filter 800ms ease;
+}
+
+.background-overlay {
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      rgba(255,255,255,0.08),
+      transparent 38%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(5,15,22,0.18),
+      rgba(4,13,20,0.54)
+    );
+
+  pointer-events: none;
+}
+
+.background-noise {
+  position: absolute;
+  inset: 0;
+
+  opacity: 0.07;
+
+  pointer-events: none;
+
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+
+  mix-blend-mode: overlay;
+}
+
+/* =========================================================
+   APP
+   ========================================================= */
+
+.app {
+  position: relative;
+  z-index: 2;
+
+  min-height: 100svh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding:
+    max(90px, env(safe-area-inset-top))
+    20px
+    max(28px, env(safe-area-inset-bottom));
+}
+
+/* =========================================================
+   PLAYER
+   ========================================================= */
+
+.player {
+  position: relative;
+
+  width: min(100%, var(--player-width));
+
+  min-height: 680px;
+
+  padding:
+    34px
+    44px
+    30px;
+
+  border:
+    1px solid rgba(255,255,255,0.24);
+
+  border-radius: var(--player-radius);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(42,52,60,0.74),
+      rgba(7,23,33,0.78)
+    );
+
+  box-shadow:
+    0 40px 100px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.11);
+
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+
+  overflow: visible;
+}
+
+.player::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  border-radius: inherit;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      130deg,
+      rgba(255,255,255,0.08),
+      transparent 32%
+    );
+}
+
+/* =========================================================
+   DYNAMIC ISLAND
+   ========================================================= */
+
+.dynamic-island-wrap {
+  position: fixed;
+
+  top:
+    max(18px, env(safe-area-inset-top));
+
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  z-index: 1000;
+
+  pointer-events: none;
+}
+
+.dynamic-island {
+  position: relative;
+
+  width: var(--dynamic-width);
+  height: var(--dynamic-height);
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #050505,
+      #000000
+    );
+
+  box-shadow:
+    0 12px 36px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+
+  overflow: hidden;
+
+  cursor: pointer;
+
+  pointer-events: auto;
+
+  transition:
+    width var(--transition-slow),
+    height var(--transition-slow),
+    border-radius var(--transition-slow),
+    box-shadow var(--transition-slow);
+}
+
+.dynamic-island.expanded {
+  width: min(390px, calc(100vw - 32px));
+  height: 88px;
+
+  border-radius: 28px;
+
+  box-shadow:
+    0 24px 70px rgba(0,0,0,0.42),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.island-mini {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+
+  padding: 7px 13px;
+
+  gap: 10px;
+
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.dynamic-island.expanded .island-mini {
+  opacity: 0;
+  transform: scale(0.86);
+  pointer-events: none;
+}
+
+.island-thumb {
+  width: 29px;
+  height: 29px;
+
+  border-radius: 8px;
+
+  object-fit: cover;
+
+  flex: 0 0 auto;
+
+  background: #202020;
+}
+
+.island-mini-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.island-mini-title {
+  font-size: 11px;
+  font-weight: 650;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  color: #fff;
+}
+
+.island-mini-artist {
+  margin-top: 2px;
+
+  font-size: 9px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  color: rgba(255,255,255,0.52);
+}
+
+.island-spectrum {
+  width: 31px;
+  height: 21px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 2px;
+
+  flex: 0 0 auto;
+}
+
+.island-spectrum span {
+  width: 2px;
+  height: 7px;
+
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.85);
+
+  transform-origin: center;
+
+  transition: height 70ms linear;
+}
+
+.island-spectrum span:nth-child(1) { height: 5px; }
+.island-spectrum span:nth-child(2) { height: 11px; }
+.island-spectrum span:nth-child(3) { height: 15px; }
+.island-spectrum span:nth-child(4) { height: 8px; }
+.island-spectrum span:nth-child(5) { height: 12px; }
+
+.island-expanded {
+  position: absolute;
+  inset: 0;
+
+  display: grid;
+
+  grid-template-columns: 46px 1fr auto;
+
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 12px 14px;
+
+  opacity: 0;
+  transform: scale(0.92);
+
+  pointer-events: none;
+
+  transition:
+    opacity var(--transition-normal),
+    transform var(--transition-normal);
+}
+
+.dynamic-island.expanded .island-expanded {
+  opacity: 1;
+  transform: scale(1);
+
+  pointer-events: auto;
+}
+
+.island-expanded-art {
+  width: 46px;
+  height: 46px;
+
+  border-radius: 13px;
+
+  object-fit: cover;
+
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+}
+
+.island-expanded-info {
+  min-width: 0;
+}
+
+.island-expanded-title {
+  font-size: 13px;
+  font-weight: 700;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.island-expanded-artist {
+  margin-top: 3px;
+
+  font-size: 11px;
+
+  color: rgba(255,255,255,0.52);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.island-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.island-action {
+  width: 31px;
+  height: 31px;
+
+  display: grid;
+  place-items: center;
+
+  border: 0;
+  border-radius: 50%;
+
+  color: #fff;
+
+  background: rgba(255,255,255,0.08);
+
+  cursor: pointer;
+
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.island-action:hover {
+  background: rgba(255,255,255,0.16);
+}
+
+.island-action:active {
+  transform: scale(0.88);
+}
+
+.island-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* =========================================================
+   TOP ROW
+   ========================================================= */
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 38px;
+
+  margin-bottom: 18px;
+}
+
+.player-label {
+  font-size: 12px;
+
+  color: rgba(255,255,255,0.42);
+
+  letter-spacing: 0.04em;
+
+  text-transform: uppercase;
+}
+
+.top-actions {
+  display: none;
+}
+
+.top-button {
+  width: 35px;
+  height: 35px;
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  border-radius: 50%;
+
+  background: rgba(255,255,255,0.05);
+
+  color: rgba(255,255,255,0.75);
+
+  display: grid;
+  place-items: center;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.top-button:hover {
+  background: rgba(255,255,255,0.11);
+}
+
+.top-button:active {
+  transform: scale(0.9);
+}
+
+.top-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* =========================================================
+   ARTWORK
+   ========================================================= */
+
+.artwork-section {
+  width: 100%;
+
+  display: flex;
+  justify-content: center;
+
+  margin-top: 6px;
+}
+
+.artwork {
+  position: relative;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  width: min(100%, 570px);
+
+  aspect-ratio: 1 / 1;
+
+  overflow: hidden;
+
+  border-radius: 25px;
+
+  background: #202a31;
+
+  box-shadow:
+    0 30px 60px rgba(0,0,0,0.32),
+    0 2px 5px rgba(0,0,0,0.25);
+
+  cursor: pointer;
+
+  transform: translateZ(0);
+
+  transition:
+    transform 500ms cubic-bezier(.16,1,.3,1),
+    box-shadow 500ms ease;
+}
+
+.artwork:hover {
+  transform: scale(1.006);
+}
+
+.artwork:active {
+  transform: scale(0.985);
+}
+
+.artwork-image {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  /*
+    Screenshot kamu berukuran 864 x 1536.
+    Bagian artwork berada di sekitar tengah atas.
+    object-position 41% membantu mengambil bagian artwork.
+  */
+
+  object-position: center 41%;
+
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.artwork::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  border-radius: inherit;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.artwork-hint {
+  position: absolute;
+
+  left: 50%;
+  bottom: 18px;
+
+  transform: translate(-50%, 10px);
+
+  padding: 8px 13px;
+
+  border-radius: 999px;
+
+  background: rgba(0,0,0,0.45);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  font-size: 10px;
+  font-weight: 600;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+
+  white-space: nowrap;
+}
+
+.artwork:hover .artwork-hint {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* =========================================================
+   TRACK INFO
+   ========================================================= */
+
+.track-info {
+  margin-top: 27px;
+
+  text-align: left;
+}
+
+.track-title-row {
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+}
+
+.track-title {
+  min-width: 0;
+  flex: 1 1 auto;
+
+  font-size: clamp(22px, 4vw, 32px);
+  line-height: 1.08;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  /* Feather halus di kedua tepi agar teks masuk/keluar tanpa terpotong kasar. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 5.5%, #000 94.5%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 5.5%, #000 94.5%, transparent 100%);
+}
+
+.track-title-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  /* Glow tipis sebagai aksen, tetap lembut dan tidak berlebihan. */
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.16), 0 0 10px rgba(160, 195, 255, 0.08);
+}
+
+.track-title.marquee-active .track-title-marquee {
+  animation: derbaysTitleMarquee var(--marquee-duration, 8s) linear infinite;
+}
+
+@keyframes derbaysTitleMarquee {
+  /* Diam sebentar di awal, lalu berjalan ke kiri. */
+  0%, 8% { transform: translateX(0); opacity: 1; }
+  /* Berjalan perlahan agar judul panjang tetap mudah dibaca. */
+  62% { transform: translateX(calc(-1 * var(--marquee-distance, 0px))); opacity: 1; }
+  /* Jeda di ujung sebelum kembali ke awal. */
+  70%, 74% { transform: translateX(calc(-1 * var(--marquee-distance, 0px))); opacity: 1; }
+  /* Kedip lembut beberapa kali, seperti transisi halus pada pemutar musik. */
+  77% { opacity: .35; }
+  80% { opacity: 1; }
+  83% { opacity: .35; }
+  86% { opacity: 1; }
+  89% { opacity: .35; }
+  92% { opacity: 1; }
+  /* Sembunyikan sesaat saat posisi kembali ke awal agar reset tidak terasa menyentak. */
+  95% { transform: translateX(calc(-1 * var(--marquee-distance, 0px))); opacity: 0; }
+  96% { transform: translateX(0); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-title.marquee-active .track-title-marquee { animation: none; }
+}
+
+.explicit {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 8px;
+
+  width: 20px;
+  height: 20px;
+
+  border: 1px solid rgba(255,255,255,0.62);
+
+  border-radius: 5px;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  flex: 0 0 auto;
+
+  opacity: 0.9;
+}
+
+.artist-button {
+  display: inline-block;
+
+  margin-top: 8px;
+
+  padding: 0;
+
+  border: 0;
+
+  color: rgba(255,255,255,0.57);
+
+  background: transparent;
+
+  font: inherit;
+
+  font-size: clamp(15px, 2vw, 18px);
+
+  cursor: pointer;
+
+  transition:
+    color var(--transition-fast);
+}
+
+.artist-button:hover {
+  color: #fff;
+}
+
+/* =========================================================
+   MINI SPECTRUM - APPLE STYLE
+   ========================================================= */
+
+.progress-header {
+  position: relative;
+
+  width: 100%;
+  height: 17px;
+
+  display: flex;
+
+  justify-content: flex-end;
+  align-items: flex-end;
+
+  margin-bottom: 4px;
+}
+
+.spectrum-mini {
+  width: 32px;
+  height: 16px;
+
+  display: flex;
+
+  align-items: flex-end;
+  justify-content: flex-end;
+
+  gap: 2px;
+
+  opacity: 0.78;
+
+  overflow: hidden;
+}
+
+.spectrum-mini span {
+  display: block;
+
+  width: 2px;
+
+  min-height: 3px;
+
+  max-height: 14px;
+
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.88);
+
+  transform-origin: bottom center;
+
+  transition:
+    height 70ms linear,
+    opacity 120ms ease;
+}
+
+.spectrum-mini span:nth-child(1) {
+  height: 5px;
+}
+
+.spectrum-mini span:nth-child(2) {
+  height: 9px;
+}
+
+.spectrum-mini span:nth-child(3) {
+  height: 13px;
+}
+
+.spectrum-mini span:nth-child(4) {
+  height: 7px;
+}
+
+.spectrum-mini span:nth-child(5) {
+  height: 11px;
+}
+
+.spectrum-mini span:nth-child(6) {
+  height: 6px;
+}
+
+.spectrum-mini span:nth-child(7) {
+  height: 9px;
+}
+
+/* =========================================================
+   PROGRESS
+   ========================================================= */
+
+.progress-section {
+  margin-top: 6px;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.progress-track {
+  position: relative;
+
+  width: 100%;
+  height: 6px;
+
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.20);
+
+  cursor: pointer;
+
+  touch-action: none;
+}
+
+.progress-fill {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 0%;
+  height: 100%;
+
+  border-radius: inherit;
+
+  background: rgba(255,255,255,0.86);
+
+  /* Pergerakan utama digerakkan requestAnimationFrame agar tidak tersendat. */
+  transition: none;
+  pointer-events: none;
+}
+
+.progress-thumb {
+  position: absolute;
+
+  top: 50%;
+
+  left: 0%;
+
+  width: 13px;
+  height: 13px;
+
+  border-radius: 50%;
+
+  background: #fff;
+
+  transform:
+    translate(-50%, -50%)
+    scale(0);
+
+  box-shadow:
+    0 1px 5px rgba(0,0,0,0.25);
+
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1);
+
+  pointer-events: none;
+}
+
+.progress-track:hover .progress-thumb,
+.progress-track.dragging .progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.time-row {
+  display: flex;
+
+  justify-content: space-between;
+
+  margin-top: 8px;
+
+  color: rgba(255,255,255,0.58);
+
+  font-size: 12px;
+
+  font-family: "Arial Rounded MT Bold", "SF Pro Rounded", ui-rounded, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================
+   CONTROLS
+   ========================================================= */
+
+.controls {
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  gap: clamp(38px, 8vw, 72px);
+
+  margin-top: 25px;
+}
+
+.control {
+  width: 45px;
+  height: 45px;
+
+  border: 0;
+
+  border-radius: 50%;
+
+  background: transparent;
+
+  color: #fff;
+
+  display: grid;
+  place-items: center;
+
+  cursor: pointer;
+
+  transition:
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.control:hover {
+  transform: scale(1.07);
+}
+
+.control:active {
+  transform: scale(0.86);
+}
+
+.control svg {
+  width: 31px;
+  height: 31px;
+
+  fill: currentColor;
+}
+
+.control.play {
+  width: 72px;
+  height: 72px;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  box-shadow: none;
+
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.control.play:hover {
+  background: transparent;
+
+  transform: scale(1.05);
+}
+
+.control:not(.play) svg {
+  width: 37px;
+  height: 37px;
+}
+
+.control.play svg {
+  width: 57px;
+  height: 57px;
+  transform-origin: center;
+  transition: transform 460ms cubic-bezier(.2,.8,.2,1);
+}
+
+.control.play.is-press-anim {
+  animation: playPressRelease 460ms cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes playPressRelease {
+  0% { transform: scale(1); }
+  24% { transform: scale(0.76); }
+  58% { transform: scale(1.14); }
+  78% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control.play.is-press-anim { animation-duration: 1ms; }
+  .progress-fill, .progress-thumb { transition-duration: 1ms; }
+  .control.play svg { transition-duration: 1ms; }
+}
+
+/* =========================================================
+   VOLUME
+   ========================================================= */
+
+.volume-section {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+
+  gap: 13px;
+
+  margin-top: 26px;
+}
+
+.volume-icon {
+  width: 20px;
+  height: 20px;
+
+  color: rgba(255,255,255,0.55);
+
+  flex: 0 0 auto;
+}
+
+.volume-track {
+  position: relative;
+
+  flex: 0 1 65%;
+  max-width: 230px;
+
+  height: 7px;
+
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.22);
+
+  cursor: pointer;
+
+  touch-action: none;
+}
+
+.volume-fill {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  height: 100%;
+
+  width: 78%;
+
+  border-radius: inherit;
+
+  background: rgba(255,255,255,0.74);
+}
+
+.volume-thumb {
+  position: absolute;
+
+  top: 50%;
+  left: 78%;
+
+  width: 12px;
+  height: 12px;
+
+  border-radius: 50%;
+
+  background: #fff;
+
+  transform: translate(-50%, -50%);
+
+  opacity: 0;
+
+  transition: opacity var(--transition-fast);
+}
+
+.volume-track:hover .volume-thumb,
+.volume-track.dragging .volume-thumb {
+  opacity: 1;
+}
+
+/* =========================================================
+   DERBAYS OUTPUT
+   ========================================================= */
+
+.output-button {
+  margin: 25px auto 0;
+
+  min-width: 150px;
+  height: 54px;
+
+  padding: 0 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  border: 0;
+
+  border-radius: 999px;
+
+  color: rgba(255,255,255,0.86);
+
+  background:
+    rgba(255,255,255,0.10);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  cursor: pointer;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  letter-spacing: 0.01em;
+
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.output-button:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.output-button:active {
+  transform: scale(0.97);
+}
+
+.output-icon {
+  width: 23px;
+  height: 23px;
+
+  display: grid;
+  place-items: center;
+}
+
+.output-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+/* =========================================================
+   FILE INPUTS
+   ========================================================= */
+
+.hidden-input {
+  display: none;
+}
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+.toast {
+  position: fixed;
+
+  left: 50%;
+  bottom: 25px;
+
+  z-index: 2000;
+
+  transform:
+    translate(-50%, 25px)
+    scale(0.96);
+
+  max-width: min(90vw, 420px);
+
+  padding: 12px 17px;
+
+  border-radius: 999px;
+
+  color: #fff;
+
+  background:
+    rgba(0,0,0,0.72);
+
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  font-size: 12px;
+  font-weight: 600;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  transition:
+    opacity 250ms ease,
+    transform 250ms ease;
+
+  text-align: center;
+}
+
+.toast.show {
+  opacity: 1;
+
+  transform:
+    translate(-50%, 0)
+    scale(1);
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 720px) {
+
+  .app {
+    align-items: flex-start;
+
+    padding:
+      76px
+      11px
+      max(20px, env(safe-area-inset-bottom));
+  }
+
+  .player {
+    min-height: auto;
+
+    width: 100%;
+
+    padding:
+      20px
+      17px
+      23px;
+
+    border-radius: 31px;
+
+    /* Zoom-out sedikit lebih kecil untuk seluruh kartu beserta isinya. */
+    transform: scale(0.84);
+    transform-origin: top center;
+  }
+
+  .top-row {
+    margin-bottom: 12px;
+  }
+
+  .player-label {
+    font-size: 10px;
+  }
+
+  .top-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .artwork {
+    border-radius: 21px;
+  }
+
+  .track-info {
+    margin-top: 22px;
+  }
+
+  .track-title {
+    font-size: 24px;
+  }
+
+  .artist-button {
+    font-size: 15px;
+  }
+
+  .controls {
+    gap: 42px;
+
+    margin-top: 22px;
+  }
+
+  .control {
+    width: 42px;
+    height: 42px;
+  }
+
+  .control svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .control:not(.play) svg {
+    width: 37px;
+    height: 37px;
+  }
+
+  .control.play {
+    width: 76px;
+    height: 76px;
+  }
+
+  .control.play svg {
+    width: 70px;
+    height: 70px;
+  }
+
+  .volume-section {
+    margin-top: 22px;
+  }
+
+  .output-button {
+    margin-top: 22px;
+  }
+
+  .dynamic-island {
+    width: 164px;
+    height: 39px;
+  }
+
+  .dynamic-island.expanded {
+    width: calc(100vw - 28px);
+    height: 82px;
+
+    border-radius: 25px;
+  }
+}
+
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+  .controls {
+    gap: 29px;
+  }
+
+  .control:not(.play) svg {
+    width: 35px;
+    height: 35px;
+  }
+
+  .player {
+    transform: scale(0.80);
+  }
+
+  .control.play {
+    width: 72px;
+    height: 72px;
+  }
+
+  .control.play svg {
+    width: 66px;
+    height: 66px;
+  }
+
+  .track-title {
+    font-size: 21px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* FIX INTERAKSI: lapisan dekoratif tidak boleh menutupi kontrol. */
+.background,
+.background-art,
+.background-overlay,
+.background-noise {
+  pointer-events: none !important;
+}
+.app, .player, .top-row, .top-actions, .controls,
+.progress-section, .volume-section, .track-info {
+  position: relative;
+  z-index: 3;
+}
+.player button, .player [role="button"],
+.player .artwork, .player .progress-track, .player .volume-track,
+.dynamic-island, .dynamic-island button, .island-action {
+  position: relative;
+  z-index: 5;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.player::before { pointer-events: none !important; }
+.dynamic-island-wrap { pointer-events: none !important; }
+.dynamic-island-wrap .dynamic-island { pointer-events: auto !important; }
+
+
+/* =========================================================
+   VIRTUAL LANDSCAPE ON A PORTRAIT PHONE
+   The phone stays upright; the player canvas turns 90 degrees.
+   ========================================================= */
+
+@media screen and (orientation: portrait) and (max-width: 720px) {
+  .app {
+    position: fixed;
+    top: calc(50% - 35px);
+    left: 47%;
+    width: calc(100svh - 100px);
+    height: 100vw;
+    min-height: 0;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+  }
+
+  .player {
+    box-sizing: border-box;
+    width: 90%;
+    max-width: none;
+    height: 88%;
+    min-height: 0;
+    padding: 12px 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: 26px auto auto auto auto auto;
+    grid-template-areas:
+      "top top"
+      "art info"
+      "art progress"
+      "art controls"
+      "art volume"
+      "art output";
+    column-gap: 22px;
+    row-gap: 4px;
+    align-content: center;
+    border-radius: 28px;
+    transform: scale(0.96);
+  }
+
+  .top-row {
+    grid-area: top;
+    min-height: 26px;
+    margin: 0;
+  }
+
+  .player-label {
+    font-size: 10px;
+  }
+
+  .artwork-section {
+    grid-area: art;
+    align-self: center;
+    height: 100%;
+    margin: 0;
+    align-items: center;
+  }
+
+  .artwork {
+    width: min(100%, calc(100vw - 96px));
+    max-width: 290px;
+    border-radius: 20px;
+  }
+
+  .track-info {
+    grid-area: info;
+    align-self: end;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .track-title {
+    font-size: clamp(19px, 3.1vw, 25px);
+  }
+
+  .artist-button {
+    font-size: 14px;
+  }
+
+  .progress-section {
+    grid-area: progress;
+    align-self: center;
+    margin: 0;
+  }
+
+  .controls {
+    grid-area: controls;
+    align-self: center;
+    margin: 0;
+    gap: clamp(16px, 2.5vw, 28px);
+  }
+
+  .control {
+    width: 38px;
+    height: 38px;
+  }
+
+  .control svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .control:not(.play) svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .control.play {
+    width: 64px;
+    height: 64px;
+  }
+
+  .control.play svg {
+    width: 58px;
+    height: 58px;
+  }
+
+  .volume-section {
+    grid-area: volume;
+    align-self: center;
+    margin: 0;
+  }
+
+  .volume-track {
+    max-width: 220px;
+  }
+
+  .output-button {
+    grid-area: output;
+    justify-self: center;
+    align-self: center;
+    min-width: 126px;
+    height: 38px;
+    margin: 0;
+    padding: 0 14px;
+    font-size: 12px;
+  }
+
+  /* The Dynamic Island belongs to the physical portrait phone,
+     so it remains upright at the top of the screen. */
+  .dynamic-island-wrap {
+    top: max(18px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+
+</style>
+</head>
+
+<body>
+
+<!-- =======================================================
+     BACKGROUND
+     ======================================================= -->
+
+<div class="background">
+
+  <img
+    id="backgroundArt"
+    class="background-art"
+    src="./1000848962.jpg"
+    alt=""
+  />
+
+  <div class="background-overlay"></div>
+
+  <div class="background-noise"></div>
+
+</div>
+
+
+<!-- =======================================================
+     DYNAMIC ISLAND
+     ======================================================= -->
+
+<div class="dynamic-island-wrap">
+
+  <div
+    id="dynamicIsland"
+    class="dynamic-island"
+    title="Klik untuk membuka Dynamic Island"
+  >
+
+    <!-- MINI STATE -->
+
+    <div class="island-mini">
+
+      <img
+        id="islandThumb"
+        class="island-thumb"
+        src="./1000848962.jpg"
+        alt=""
+      />
+
+      <div class="island-mini-info">
+
+        <div
+          id="islandMiniTitle"
+          class="island-mini-title"
+        >
+          Now We're Strangers
+        </div>
+
+        <div
+          id="islandMiniArtist"
+          class="island-mini-artist"
+        >
+          Central Cee
+        </div>
+
+      </div>
+
+      <div
+        id="islandSpectrum"
+        class="island-spectrum"
+      >
+
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+
+      </div>
+
+    </div>
+
+
+    <!-- EXPANDED STATE -->
+
+    <div class="island-expanded">
+
+      <img
+        id="islandExpandedArt"
+        class="island-expanded-art"
+        src="./1000848962.jpg"
+        alt=""
+      />
+
+      <div class="island-expanded-info">
+
+        <div
+          id="islandExpandedTitle"
+          class="island-expanded-title"
+        >
+          Now We're Strangers
+        </div>
+
+        <div
+          id="islandExpandedArtist"
+          class="island-expanded-artist"
+        >
+          Central Cee
+        </div>
+
+      </div>
+
+      <div class="island-actions">
+
+        <button
+          id="islandPlay"
+          class="island-action"
+          type="button"
+          aria-label="Play/Pause"
+        ></button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =======================================================
+     MAIN APP
+     ======================================================= -->
+
+<main class="app">
+
+  <section class="player">
+
+    <!-- TOP -->
+
+    <div class="top-row">
+
+      <div class="player-label">
+        DERBAYS MUSIC
+      </div>
+
+      <div class="top-actions">
+</div>
+
+    </div>
+
+
+    <!-- ALBUM ART -->
+
+    <div class="artwork-section">
+
+      <div
+        id="artwork"
+        class="artwork"
+        title="Klik untuk mengganti album art"
+      >
+
+        <img
+          id="albumArt"
+          class="artwork-image"
+          src="./1000848962.jpg"
+          alt="Album artwork"
+        />
+
+        <div class="artwork-hint">
+          KETUK ALBUM UNTUK GANTI FOTO
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- TRACK INFORMATION -->
+
+    <div class="track-info">
+
+      <div class="track-title-row">
+
+        <div
+          id="trackTitle"
+          class="track-title"
+        >
+          Now We're Strangers
+        </div>
+
+        <span
+          class="explicit"
+          aria-label="Explicit"
+        >
+          E
+        </span>
+
+      </div>
+
+
+      <button
+        id="artistButton"
+        class="artist-button"
+        type="button"
+        title="Klik untuk mengganti nama artist"
+      >
+        Central Cee
+      </button>
+
+    </div>
+
+
+ <!-- PROGRESS + MINI SPECTRUM -->
+
+<div class="progress-section">
+
+  <div class="progress-header">
+
+    <div class="spectrum-mini" id="spectrumMini">
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+
+  </div>
+
+  <div
+    id="progressTrack"
+    class="progress-track"
+    role="slider"
+    aria-label="Progress lagu"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="0"
+    tabindex="0"
+  >
+
+    <div
+      id="progressFill"
+      class="progress-fill"
+    ></div>
+
+    <div
+      id="progressThumb"
+      class="progress-thumb"
+    ></div>
+
+  </div>
+
+  <div class="time-row">
+
+    <span id="currentTime">
+      0:00
+    </span>
+
+    <span id="remainingTime">
+      −0:00
+    </span>
+
+  </div>
+
+</div>
+
+
+<!-- MAIN CONTROLS -->
+
+    <!-- MAIN CONTROLS -->
+
+    <div class="controls">
+
+      <!-- PREVIOUS -->
+
+      <button
+        id="prevButton"
+        class="control"
+        type="button"
+        aria-label="Previous"
+        title="Previous"
+      >
+
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M6 5h3v14H6z"/>
+          <path d="M20 6.5 10 12l10 5.5V6.5Z"/>
+        </svg>
+
+      </button>
+
+
+      <!-- PLAY -->
+
+      <button
+        id="playButton"
+        class="control play"
+        type="button"
+        aria-label="Play"
+        title="Play"
+      ></button>
+
+
+      <!-- NEXT -->
+
+      <button
+        id="nextButton"
+        class="control"
+        type="button"
+        aria-label="Next"
+        title="Next"
+      >
+
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M15 5h3v14h-3z"/>
+          <path d="m4 6.5 10 5.5-10 5.5V6.5Z"/>
+        </svg>
+
+      </button>
+
+    </div>
+
+
+    <!-- VOLUME -->
+
+    <div class="volume-section">
+
+      <svg
+        class="volume-icon"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M4 9v6h4l5 4V5L8 9H4Z"/>
+      </svg>
+
+
+      <div
+        id="volumeTrack"
+        class="volume-track"
+        role="slider"
+        aria-label="Volume"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="78"
+        tabindex="0"
+      >
+
+        <div
+          id="volumeFill"
+          class="volume-fill"
+        ></div>
+
+        <div
+          id="volumeThumb"
+          class="volume-thumb"
+        ></div>
+
+      </div>
+
+
+      <svg
+        class="volume-icon"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M4 9v6h4l5 4V5L8 9H4Z"/>
+        <path
+          d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+        />
+      </svg>
+
+    </div>
+
+
+    <!-- DERBAYS OUTPUT -->
+
+    <button
+      id="outputButton"
+      class="output-button"
+      type="button"
+      title="Output"
+    >
+
+      <span class="output-icon">
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 8.5a8 8 0 0 0 0 7"/>
+          <path d="M9 6a11 11 0 0 0 0 12"/>
+          <path d="M12 3.5a14.5 14.5 0 0 0 0 17"/>
+          <path d="M15 6a11 11 0 0 1 0 12"/>
+          <path d="M18 8.5a8 8 0 0 1 0 7"/>
+          <circle cx="12" cy="12" r="2"/>
+        </svg>
+
+      </span>
+
+      <span>
+        DERBAYS
+      </span>
+
+    </button>
+
+  </section>
+
+</main>
+
+
+<!-- =======================================================
+     HIDDEN INPUTS
+     ======================================================= -->
+
+<input
+  id="audioInput"
+  class="hidden-input"
+  type="file"
+  accept="audio/*"
+  multiple
+/>
+
+<input
+  id="imageInput"
+  class="hidden-input"
+  type="file"
+  accept="image/*"
+/>
+
+
+<!-- =======================================================
+     AUDIO
+     ======================================================= -->
+
+<audio
+  id="audio"
+  preload="metadata"
+  crossorigin="anonymous"
+></audio>
+
+
+<!-- =======================================================
+     TOAST
+     ======================================================= -->
+
+<div
+  id="toast"
+  class="toast"
+  role="status"
+  aria-live="polite"
+></div>
+
+
+<script>
+/* =========================================================
+   DERBAYS MUSIC PLAYER
+   ========================================================= */
+
+
+/* =========================================================
+   CONFIG
+   ========================================================= */
+
+const DEFAULT_ARTWORK = "./1000848962.jpg";
+
+const DEFAULT_TITLE = "Now We're Strangers";
+
+const DEFAULT_ARTIST = "Central Cee";
+
+
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
+
+const audio =
+  document.getElementById("audio");
+
+const albumArt =
+  document.getElementById("albumArt");
+
+const backgroundArt =
+  document.getElementById("backgroundArt");
+
+const trackTitle =
+  document.getElementById("trackTitle");
+
+const artistButton =
+  document.getElementById("artistButton");
+
+const playButton =
+  document.getElementById("playButton");
+
+const prevButton =
+  document.getElementById("prevButton");
+
+const nextButton =
+  document.getElementById("nextButton");
+
+const progressTrack =
+  document.getElementById("progressTrack");
+
+const progressFill =
+  document.getElementById("progressFill");
+
+const progressThumb =
+  document.getElementById("progressThumb");
+
+const currentTimeElement =
+  document.getElementById("currentTime");
+
+const remainingTimeElement =
+  document.getElementById("remainingTime");
+
+const volumeTrack =
+  document.getElementById("volumeTrack");
+
+const volumeFill =
+  document.getElementById("volumeFill");
+
+const volumeThumb =
+  document.getElementById("volumeThumb");
+
+const openAudio =
+  document.getElementById("openAudio");
+
+const openImage =
+  document.getElementById("openImage");
+
+const audioInput =
+  document.getElementById("audioInput");
+
+const imageInput =
+  document.getElementById("imageInput");
+
+const artwork =
+  document.getElementById("artwork");
+
+const dynamicIsland =
+  document.getElementById("dynamicIsland");
+
+const islandThumb =
+  document.getElementById("islandThumb");
+
+const islandExpandedArt =
+  document.getElementById("islandExpandedArt");
+
+const islandMiniTitle =
+  document.getElementById("islandMiniTitle");
+
+const islandMiniArtist =
+  document.getElementById("islandMiniArtist");
+
+const islandExpandedTitle =
+  document.getElementById("islandExpandedTitle");
+
+const islandExpandedArtist =
+  document.getElementById("islandExpandedArtist");
+
+const islandPlay =
+  document.getElementById("islandPlay");
+
+const islandSpectrum =
+  document.getElementById("islandSpectrum");
+
+const spectrumMini =
+  document.getElementById("spectrumMini");
+
+const spectrumMiniBars =
+  spectrumMini.querySelectorAll("span");
+const outputButton =
+  document.getElementById("outputButton");
+
+const toast =
+  document.getElementById("toast");
+
+
+/* =========================================================
+   STATE
+   ========================================================= */
+
+let playlist = [];
+
+let currentIndex = -1;
+
+let currentArtist = DEFAULT_ARTIST;
+
+let currentArtwork = DEFAULT_ARTWORK;
+
+let audioContext = null;
+
+let analyser = null;
+
+let sourceNode = null;
+
+let analyserReady = false;
+
+let animationFrame = null;
+
+let isDraggingProgress = false;
+
+let isDraggingVolume = false;
+
+let toastTimer = null;
+
+let dynamicIslandTimer = null;
+
+let objectUrls = [];
+
+let lastArtworkUrl = DEFAULT_ARTWORK;
+
+
+/* =========================================================
+   SVG ICONS
+   ========================================================= */
+
+const ICON_PLAY = `
+<svg
+  viewBox="0 0 24 24"
+  aria-hidden="true"
+>
+  <path
+    d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.2 6.2c.9.6.9 1.8 0 2.4l-9.2 6.2C9.2 20 8 19.3 8 18.2V5.8Z"
+    fill="currentColor"
+  />
+</svg>
+`;
+
+const ICON_PAUSE = `
+<svg
+  viewBox="0 0 24 24"
+  aria-hidden="true"
+>
+  <rect
+    x="7"
+    y="5"
+    width="4"
+    height="14"
+    rx="1.2"
+    fill="currentColor"
+  />
+  <rect
+    x="13"
+    y="5"
+    width="4"
+    height="14"
+    rx="1.2"
+    fill="currentColor"
+  />
+</svg>
+`;
+
+const ICON_PLAY_SMALL = `
+<svg
+  viewBox="0 0 24 24"
+>
+  <path
+    d="M9 6.2c0-.9 1-1.5 1.8-1l7.4 4.8c.8.5.8 1.6 0 2.1l-7.4 4.8c-.8.5-1.8-.1-1.8-1V6.2Z"
+    fill="currentColor"
+  />
+</svg>
+`;
+
+const ICON_PAUSE_SMALL = `
+<svg
+  viewBox="0 0 24 24"
+>
+  <rect
+    x="7"
+    y="6"
+    width="4"
+    height="12"
+    rx="1"
+    fill="currentColor"
+  />
+  <rect
+    x="13"
+    y="6"
+    width="4"
+    height="12"
+    rx="1"
+    fill="currentColor"
+  />
+</svg>
+`;
+
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
+albumArt.src = DEFAULT_ARTWORK;
+
+backgroundArt.src = DEFAULT_ARTWORK;
+
+islandThumb.src = DEFAULT_ARTWORK;
+
+islandExpandedArt.src = DEFAULT_ARTWORK;
+
+trackTitle.textContent = DEFAULT_TITLE;
+
+artistButton.textContent = DEFAULT_ARTIST;
+
+islandMiniTitle.textContent = DEFAULT_TITLE;
+
+islandMiniArtist.textContent = DEFAULT_ARTIST;
+
+islandExpandedTitle.textContent = DEFAULT_TITLE;
+
+islandExpandedArtist.textContent = DEFAULT_ARTIST;
+
+playButton.innerHTML = ICON_PLAY;
+
+islandPlay.innerHTML = ICON_PLAY_SMALL;
+
+audio.volume = 0.78;
+
+updateVolumeUI();
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+function showToast(message) {
+
+  clearTimeout(toastTimer);
+
+  toast.textContent = message;
+
+  toast.classList.add("show");
+
+  toastTimer = setTimeout(() => {
+
+    toast.classList.remove("show");
+
+  }, 2400);
+}
+
+
+/* =========================================================
+   FORMAT TIME
+   ========================================================= */
+
+function formatTime(seconds) {
+
+  if (!Number.isFinite(seconds)) {
+    return "0:00";
+  }
+
+  seconds = Math.max(
+    0,
+    Math.floor(seconds)
+  );
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  const secs =
+    String(seconds % 60).padStart(2, "0");
+
+  return `${minutes}:${secs}`;
+}
+
+
+/* =========================================================
+   EXTRACT FILE NAME
+   ========================================================= */
+
+function titleFromFileName(name) {
+
+  if (!name) {
+    return DEFAULT_TITLE;
+  }
+
+  const withoutExtension =
+    name.replace(/\.[^/.]+$/, "");
+
+  return (
+    withoutExtension
+      .replace(/[_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  ) || DEFAULT_TITLE;
+}
+
+
+/* =========================================================
+   UPDATE TRACK TITLE
+   ========================================================= */
+
+function updateTrackTitleMarquee() {
+  if (!trackTitle) return;
+
+  const label = trackTitle.querySelector(".track-title-marquee");
+  if (!label) return;
+
+  trackTitle.classList.remove("marquee-active");
+  trackTitle.style.removeProperty("--marquee-distance");
+  trackTitle.style.removeProperty("--marquee-duration");
+
+  // Ukur setelah layout diperbarui; judul pendek tidak perlu berjalan.
+  requestAnimationFrame(() => {
+    if (!trackTitle.isConnected || !label.isConnected) return;
+    const distance = Math.ceil(label.scrollWidth - trackTitle.clientWidth);
+    if (distance > 8) {
+      trackTitle.style.setProperty("--marquee-distance", `${distance}px`);
+      // Kecepatan tetap nyaman dibaca, dengan jeda di awal dan di ujung.
+      const duration = Math.max(7, Math.min(18, 5 + distance / 18));
+      trackTitle.style.setProperty("--marquee-duration", `${duration}s`);
+      trackTitle.classList.add("marquee-active");
+    }
+  });
+}
+
+function setTrackTitle(title) {
+  const safeTitle = title || DEFAULT_TITLE;
+
+  trackTitle.textContent = "";
+  const marqueeLabel = document.createElement("span");
+  marqueeLabel.className = "track-title-marquee";
+  marqueeLabel.textContent = safeTitle;
+  trackTitle.appendChild(marqueeLabel);
+
+  islandMiniTitle.textContent = safeTitle;
+  islandExpandedTitle.textContent = safeTitle;
+  document.title = `${safeTitle} — DERBAYS`;
+  updateTrackTitleMarquee();
+}
+
+
+window.addEventListener("resize", updateTrackTitleMarquee);
+
+/* =========================================================
+   UPDATE ARTWORK
+   ========================================================= */
+
+function setArtwork(src) {
+
+  if (!src) {
+    return;
+  }
+
+  currentArtwork = src;
+  lastArtworkUrl = src;
+
+
+  /* ========================================
+     1. GANTI ALBUM UTAMA
+     ======================================== */
+
+  albumArt.src = src;
+
+
+  /* ========================================
+     2. GANTI BACKGROUND
+     ======================================== */
+
+  backgroundArt.style.opacity = "0";
+
+
+  const newBackground = new Image();
+
+  newBackground.onload = () => {
+
+    backgroundArt.src = src;
+
+    backgroundArt.style.transform =
+      "scale(1.18)";
+
+    backgroundArt.style.opacity =
+      "0.94";
+
+
+    requestAnimationFrame(() => {
+
+      setTimeout(() => {
+
+        backgroundArt.style.transform =
+          "scale(1.12)";
+
+      }, 50);
+
+    });
+
+  };
+
+
+  newBackground.onerror = () => {
+
+    /* Kalau gambar gagal dibaca,
+       tetap gunakan src langsung. */
+
+    backgroundArt.src = src;
+
+    backgroundArt.style.opacity =
+      "0.94";
+
+  };
+
+
+  newBackground.src = src;
+
+
+  /* ========================================
+     3. DYNAMIC ISLAND
+     ======================================== */
+
+  islandThumb.src = src;
+
+  islandExpandedArt.src = src;
+
+
+  /* ========================================
+     4. ANIMASI ALBUM UTAMA
+     ======================================== */
+
+  artwork.animate(
+    [
+      {
+        transform: "scale(0.975)"
+      },
+      {
+        transform: "scale(1)"
+      }
+    ],
+    {
+      duration: 420,
+      easing:
+        "cubic-bezier(.16,1,.3,1)"
+    }
+  );
+
+}
+
+
+/* =========================================================
+   UPDATE ARTIST
+   ========================================================= */
+
+function setArtist(name) {
+
+  const clean =
+    String(name || "").trim();
+
+  if (!clean) {
+    return;
+  }
+
+  currentArtist = clean;
+
+  artistButton.textContent =
+    clean;
+
+  islandMiniArtist.textContent =
+    clean;
+
+  islandExpandedArtist.textContent =
+    clean;
+
+  updateMediaSession();
+}
+
+
+/* =========================================================
+   OPEN ARTIST EDITOR
+   ========================================================= */
+
+artistButton.addEventListener(
+  "click",
+  () => {
+
+    const newArtist =
+      window.prompt(
+        "Masukkan nama artist:",
+        currentArtist
+      );
+
+    if (
+      newArtist !== null &&
+      newArtist.trim()
+    ) {
+
+      setArtist(newArtist);
+
+      showToast(
+        `Artist diubah menjadi "${newArtist.trim()}"`
+      );
+    }
+  }
+);
+
+
+/* =========================================================
+   AUDIO INPUT
+   ========================================================= */
+
+// Pemilihan lagu sekarang dilakukan dengan mengetuk judul lagu saat dijeda.
+if (openAudio) {
+  openAudio.addEventListener("click", () => audioInput.click());
+}
+
+audioInput.addEventListener(
+  "change",
+  async event => {
+
+    const files =
+      Array.from(event.target.files || []);
+
+    if (!files.length) {
+      return;
+    }
+
+    /*
+      Release old object URLs.
+    */
+
+    objectUrls.forEach(url => {
+      URL.revokeObjectURL(url);
+    });
+
+    objectUrls = [];
+
+    playlist =
+      files.map(file => {
+
+        const url =
+          URL.createObjectURL(file);
+
+        objectUrls.push(url);
+
+        return {
+          name: file.name,
+          title: titleFromFileName(file.name),
+          url,
+          file
+        };
+
+      });
+
+    currentIndex = 0;
+
+    loadTrack(
+      currentIndex,
+      true
+    );
+
+    showToast(
+      `${files.length} lagu dimuat`
+    );
+
+    audioInput.value = "";
+  }
+);
+
+
+/* =========================================================
+   LOAD REMOTE URL
+   ========================================================= */
+
+function loadRemoteSong() {
+
+  const url =
+    window.prompt(
+      "Masukkan URL file audio:\n\nContoh:\nhttps://example.com/song.mp3"
+    );
+
+  if (!url) {
+    return;
+  }
+
+  let title =
+    titleFromFileName(url.split("/").pop());
+
+  const customTitle =
+    window.prompt(
+      "Judul lagu:",
+      title
+    );
+
+  if (
+    customTitle !== null &&
+    customTitle.trim()
+  ) {
+    title = customTitle.trim();
+  }
+
+  playlist = [
+    {
+      name: title,
+      title,
+      url,
+      remote: true
+    }
+  ];
+
+  currentIndex = 0;
+
+  loadTrack(
+    0,
+    true
+  );
+
+  showToast(
+    "Lagu dari URL dimuat"
+  );
+}
+
+
+/* =========================================================
+   LEGACY MUSIC BUTTON HANDLER REMOVED
+   The top music icon was intentionally removed. Avoid binding
+   events to the now-absent #openAudio element; doing so throws
+   a TypeError and prevents every handler below from initializing.
+   ========================================================= */
+
+/* =========================================================
+   LOAD TRACK
+   ========================================================= */
+
+function loadTrack(
+  index,
+  autoplay = false
+) {
+
+  if (
+    !playlist.length ||
+    index < 0 ||
+    index >= playlist.length
+  ) {
+    return;
+  }
+
+  currentIndex = index;
+
+  const track =
+    playlist[index];
+
+  setTrackTitle(
+    track.title
+  );
+
+  /*
+    Reset artist only if it is the first
+    actual selected song.
+  */
+
+  if (!track.artist) {
+    track.artist = currentArtist;
+  }
+
+  setArtist(
+    track.artist || currentArtist
+  );
+
+  audio.src =
+    track.url;
+
+  audio.load();
+
+  updateProgressUI();
+
+  if (autoplay) {
+
+    const promise =
+      audio.play();
+
+    if (
+      promise &&
+      typeof promise.catch === "function"
+    ) {
+
+      promise.catch(() => {
+        /*
+          Browser autoplay restriction.
+          User can press play.
+        */
+      });
+    }
+  }
+
+  updateMediaSession();
+
+  pulseDynamicIsland();
+}
+
+
+/* =========================================================
+   PLAY / PAUSE
+   ========================================================= */
+
+async function togglePlay() {
+
+  if (!audio.src) {
+
+    if (playlist.length) {
+
+      loadTrack(
+        currentIndex >= 0
+          ? currentIndex
+          : 0,
+        true
+      );
+
+    } else {
+
+      showToast(
+        "Pilih lagu terlebih dahulu"
+      );
+
+    }
+
+    return;
+  }
+
+  try {
+
+    if (audio.paused) {
+
+      await audio.play();
+
+    } else {
+
+      audio.pause();
+
+    }
+
+  } catch (error) {
+
+    showToast(
+      "Browser memblokir playback. Tekan Play sekali lagi."
+    );
+  }
+}
+
+
+playButton.addEventListener(
+  "click",
+  () => {
+    playButton.classList.remove("is-press-anim");
+    /* Restart the animation on every tap. */
+    void playButton.offsetWidth;
+    playButton.classList.add("is-press-anim");
+    togglePlay();
+  }
+);
+
+playButton.addEventListener(
+  "animationend",
+  () => playButton.classList.remove("is-press-anim")
+);
+
+
+islandPlay.addEventListener(
+  "click",
+  event => {
+
+    event.stopPropagation();
+
+    togglePlay();
+  }
+);
+
+
+/* =========================================================
+   PLAY / PAUSE UI
+   ========================================================= */
+
+function updatePlayUI() {
+
+  if (audio.paused) {
+
+    playButton.innerHTML =
+      ICON_PLAY;
+
+    islandPlay.innerHTML =
+      ICON_PLAY_SMALL;
+
+  } else {
+
+    playButton.innerHTML =
+      ICON_PAUSE;
+
+    islandPlay.innerHTML =
+      ICON_PAUSE_SMALL;
+  }
+}
+
+
+/* =========================================================
+   AUDIO PLAY
+   ========================================================= */
+
+audio.addEventListener(
+  "play",
+  () => {
+
+    updatePlayUI();
+
+    ensureAudioAnalyser();
+
+    updateMediaSession();
+
+    pulseDynamicIsland();
+  }
+);
+
+
+/* =========================================================
+   AUDIO PAUSE
+   ========================================================= */
+
+audio.addEventListener(
+  "pause",
+  () => {
+
+    updatePlayUI();
+
+    updateMediaSession();
+  }
+);
+
+
+/* =========================================================
+   AUDIO ENDED
+   ========================================================= */
+
+audio.addEventListener(
+  "ended",
+  () => {
+
+    if (
+      playlist.length > 1 &&
+      currentIndex <
+      playlist.length - 1
+    ) {
+
+      loadTrack(
+        currentIndex + 1,
+        true
+      );
+
+    } else {
+
+      audio.currentTime = 0;
+
+      updateProgressUI();
+
+      updatePlayUI();
+    }
+  }
+);
+
+
+/* =========================================================
+   PREVIOUS
+   ========================================================= */
+
+prevButton.addEventListener(
+  "click",
+  () => {
+
+    if (!playlist.length) {
+      showToast("Belum ada playlist");
+      return;
+    }
+
+    /*
+      If song already played more than 3 sec,
+      restart current song.
+    */
+
+    if (audio.currentTime > 3) {
+
+      audio.currentTime = 0;
+
+      return;
+    }
+
+    let nextIndex =
+      currentIndex - 1;
+
+    if (nextIndex < 0) {
+
+      nextIndex =
+        playlist.length - 1;
+    }
+
+    loadTrack(
+      nextIndex,
+      true
+    );
+  }
+);
+
+
+/* =========================================================
+   NEXT
+   ========================================================= */
+
+nextButton.addEventListener(
+  "click",
+  () => {
+
+    if (!playlist.length) {
+      showToast("Belum ada playlist");
+      return;
+    }
+
+    let nextIndex =
+      currentIndex + 1;
+
+    if (
+      nextIndex >= playlist.length
+    ) {
+
+      nextIndex = 0;
+    }
+
+    loadTrack(
+      nextIndex,
+      true
+    );
+  }
+);
+
+
+/* =========================================================
+   PROGRESS UI
+   ========================================================= */
+
+function updateProgressUI() {
+
+  const duration =
+    audio.duration;
+
+  const current =
+    audio.currentTime;
+
+  if (
+    !Number.isFinite(duration) ||
+    duration <= 0
+  ) {
+
+    progressFill.style.width =
+      "0%";
+
+    progressThumb.style.left =
+      "0%";
+
+    currentTimeElement.textContent =
+      "0:00";
+
+    remainingTimeElement.textContent =
+      "−0:00";
+
+    return;
+  }
+
+  const percentage =
+    Math.min(
+      100,
+      Math.max(
+        0,
+        (current / duration) * 100
+      )
+    );
+
+  // Use one shared whole-second clock so both labels update in sync.
+  const totalSeconds = Math.floor(duration);
+  const currentSeconds = Math.min(
+    totalSeconds,
+    Math.floor(current)
+  );
+  const remainingSeconds = Math.max(
+    0,
+    totalSeconds - currentSeconds
+  );
+
+  progressFill.style.width =
+    `${percentage}%`;
+
+  progressThumb.style.left =
+    `${percentage}%`;
+
+  currentTimeElement.textContent =
+    formatTime(currentSeconds);
+
+  remainingTimeElement.textContent =
+    `−${formatTime(remainingSeconds)}`;
+
+  progressTrack.setAttribute(
+    "aria-valuenow",
+    percentage.toFixed(1)
+  );
+}
+
+
+/* =========================================================
+   AUDIO TIME UPDATE
+   ========================================================= */
+
+audio.addEventListener(
+  "timeupdate",
+  updateProgressUI
+);
+
+/* Smooth progress animation between browser timeupdate events. */
+let smoothProgressFrame = 0;
+function animateProgressSmoothly() {
+  updateProgressUI();
+  if (!audio.paused && !audio.ended) {
+    smoothProgressFrame = requestAnimationFrame(animateProgressSmoothly);
+  } else {
+    smoothProgressFrame = 0;
+  }
+}
+audio.addEventListener("play", () => {
+  if (!smoothProgressFrame) {
+    smoothProgressFrame = requestAnimationFrame(animateProgressSmoothly);
+  }
+});
+audio.addEventListener("pause", () => {
+  if (smoothProgressFrame) {
+    cancelAnimationFrame(smoothProgressFrame);
+    smoothProgressFrame = 0;
+  }
+  updateProgressUI();
+});
+audio.addEventListener("ended", () => {
+  if (smoothProgressFrame) {
+    cancelAnimationFrame(smoothProgressFrame);
+    smoothProgressFrame = 0;
+  }
+  updateProgressUI();
+});
+
+
+/* =========================================================
+   METADATA LOADED
+   ========================================================= */
+
+audio.addEventListener(
+  "loadedmetadata",
+  () => {
+
+    updateProgressUI();
+
+    updateMediaSession();
+  }
+);
+
+
+/* =========================================================
+   PROGRESS POSITION
+   ========================================================= */
+
+function setProgressFromPointer(
+  event
+) {
+
+  const rect =
+    progressTrack.getBoundingClientRect();
+
+  let ratio =
+    (event.clientX - rect.left) /
+    rect.width;
+
+  ratio =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        ratio
+      )
+    );
+
+  if (
+    Number.isFinite(audio.duration)
+  ) {
+
+    audio.currentTime =
+      ratio * audio.duration;
+  }
+
+  updateProgressUI();
+}
+
+
+/* =========================================================
+   PROGRESS POINTER DOWN
+   ========================================================= */
+
+progressTrack.addEventListener(
+  "pointerdown",
+  event => {
+
+    isDraggingProgress = true;
+
+    progressTrack.classList.add(
+      "dragging"
+    );
+
+    progressTrack.setPointerCapture(
+      event.pointerId
+    );
+
+    setProgressFromPointer(event);
+  }
+);
+
+
+/* =========================================================
+   PROGRESS POINTER MOVE
+   ========================================================= */
+
+progressTrack.addEventListener(
+  "pointermove",
+  event => {
+
+    if (!isDraggingProgress) {
+      return;
+    }
+
+    setProgressFromPointer(event);
+  }
+);
+
+
+/* =========================================================
+   PROGRESS POINTER UP
+   ========================================================= */
+
+progressTrack.addEventListener(
+  "pointerup",
+  () => {
+
+    isDraggingProgress = false;
+
+    progressTrack.classList.remove(
+      "dragging"
+    );
+  }
+);
+
+
+/* =========================================================
+   PROGRESS KEYBOARD
+   ========================================================= */
+
+progressTrack.addEventListener(
+  "keydown",
+  event => {
+
+    if (
+      !Number.isFinite(audio.duration)
+    ) {
+      return;
+    }
+
+    if (
+      event.key === "ArrowRight"
+    ) {
+
+      event.preventDefault();
+
+      audio.currentTime =
+        Math.min(
+          audio.duration,
+          audio.currentTime + 5
+        );
+    }
+
+    if (
+      event.key === "ArrowLeft"
+    ) {
+
+      event.preventDefault();
+
+      audio.currentTime =
+        Math.max(
+          0,
+          audio.currentTime - 5
+        );
+    }
+  }
+);
+
+
+/* =========================================================
+   VOLUME UI
+   ========================================================= */
+
+function updateVolumeUI() {
+
+  const value =
+    audio.volume * 100;
+
+  volumeFill.style.width =
+    `${value}%`;
+
+  volumeThumb.style.left =
+    `${value}%`;
+
+  volumeTrack.setAttribute(
+    "aria-valuenow",
+    value.toFixed(0)
+  );
+}
+
+
+/* =========================================================
+   VOLUME POINTER
+   ========================================================= */
+
+function setVolumeFromPointer(
+  event
+) {
+
+  const rect =
+    volumeTrack.getBoundingClientRect();
+
+  let ratio =
+    (event.clientX - rect.left) /
+    rect.width;
+
+  ratio =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        ratio
+      )
+    );
+
+  audio.volume =
+    ratio;
+
+  updateVolumeUI();
+}
+
+
+/* =========================================================
+   VOLUME POINTER DOWN
+   ========================================================= */
+
+volumeTrack.addEventListener(
+  "pointerdown",
+  event => {
+
+    isDraggingVolume = true;
+
+    volumeTrack.classList.add(
+      "dragging"
+    );
+
+    volumeTrack.setPointerCapture(
+      event.pointerId
+    );
+
+    setVolumeFromPointer(event);
+  }
+);
+
+
+/* =========================================================
+   VOLUME POINTER MOVE
+   ========================================================= */
+
+volumeTrack.addEventListener(
+  "pointermove",
+  event => {
+
+    if (!isDraggingVolume) {
+      return;
+    }
+
+    setVolumeFromPointer(event);
+  }
+);
+
+
+/* =========================================================
+   VOLUME POINTER UP
+   ========================================================= */
+
+volumeTrack.addEventListener(
+  "pointerup",
+  () => {
+
+    isDraggingVolume = false;
+
+    volumeTrack.classList.remove(
+      "dragging"
+    );
+  }
+);
+
+
+/* =========================================================
+   VOLUME KEYBOARD
+   ========================================================= */
+
+volumeTrack.addEventListener(
+  "keydown",
+  event => {
+
+    if (
+      event.key === "ArrowRight"
+    ) {
+
+      event.preventDefault();
+
+      audio.volume =
+        Math.min(
+          1,
+          audio.volume + 0.05
+        );
+
+      updateVolumeUI();
+    }
+
+    if (
+      event.key === "ArrowLeft"
+    ) {
+
+      event.preventDefault();
+
+      audio.volume =
+        Math.max(
+          0,
+          audio.volume - 0.05
+        );
+
+      updateVolumeUI();
+    }
+  }
+);
+
+
+/* =========================================================
+   IMAGE PICKER
+   ========================================================= */
+
+// Tombol ikon gambar dihilangkan; album utama tetap membuka pemilih foto.
+if (openImage) {
+  openImage.addEventListener("click", () => imageInput.click());
+}
+
+
+artwork.addEventListener(
+  "click",
+  () => {
+    if (imageInput) imageInput.click();
+  }
+);
+
+artwork.setAttribute("role", "button");
+artwork.setAttribute("tabindex", "0");
+artwork.setAttribute("aria-label", "Ketuk untuk mengganti foto album");
+artwork.addEventListener("keydown", event => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    if (imageInput) imageInput.click();
+  }
+});
+
+
+imageInput.addEventListener(
+  "change",
+  event => {
+
+    const file =
+      event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const url =
+      URL.createObjectURL(file);
+
+    objectUrls.push(url);
+
+    setArtwork(url);
+
+    showToast(
+      "Album artwork berhasil diganti"
+    );
+
+    imageInput.value = "";
+  }
+);
+
+
+/* =========================================================
+   AUDIO ANALYSER
+   ========================================================= */
+
+function ensureAudioAnalyser() {
+
+  if (analyserReady) {
+    return true;
+  }
+
+  try {
+
+    const AudioContext =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if (!AudioContext) {
+      return false;
+    }
+
+    audioContext =
+      new AudioContext();
+
+    analyser =
+      audioContext.createAnalyser();
+
+    /*
+      fftSize controls the resolution
+      of the frequency data.
+
+      128 is intentionally small/light
+      for the visual effect requested.
+    */
+
+    analyser.fftSize = 128;
+
+    analyser.smoothingTimeConstant =
+      0.72;
+
+    analyser.minDecibels =
+      -90;
+
+    analyser.maxDecibels =
+      -10;
+
+    /*
+      Important:
+      One MediaElementSource should only
+      be created once for an audio element.
+    */
+
+    sourceNode =
+      audioContext.createMediaElementSource(
+        audio
+      );
+
+    sourceNode.connect(analyser);
+
+    analyser.connect(
+      audioContext.destination
+    );
+
+    analyserReady = true;
+
+    return true;
+
+  } catch (error) {
+
+    console.warn(
+      "Audio analyser unavailable:",
+      error
+    );
+
+    analyserReady = false;
+
+    return false;
+  }
+}
+
+
+/* =========================================================
+   RESUME AUDIO CONTEXT
+   ========================================================= */
+
+async function resumeAudioContext() {
+
+  if (
+    audioContext &&
+    audioContext.state === "suspended"
+  ) {
+
+    try {
+
+      await audioContext.resume();
+
+    } catch (error) {
+
+      console.warn(
+        "Unable to resume AudioContext",
+        error
+      );
+    }
+  }
+}
+
+
+audio.addEventListener(
+  "play",
+  resumeAudioContext
+);
+
+
+/* =========================================================
+   MINI SPECTRUM
+   ========================================================= */
+
+function drawSpectrum() {
+
+  let values = null;
+
+  if (
+    analyser &&
+    !audio.paused
+  ) {
+
+    values =
+      new Uint8Array(
+        analyser.frequencyBinCount
+      );
+
+    analyser.getByteFrequencyData(
+      values
+    );
+  }
+
+  const now =
+    performance.now();
+
+  spectrumMiniBars.forEach(
+    (bar, index) => {
+
+      let level;
+
+      if (
+        values &&
+        values.length
+      ) {
+
+        /*
+          Ambil beberapa bagian frekuensi
+          agar gerakannya terasa seperti
+          indikator musik kecil.
+        */
+
+        const sourceIndex =
+          Math.floor(
+            (index / spectrumMiniBars.length) *
+            Math.min(
+              values.length,
+              30
+            )
+          );
+
+        level =
+          values[
+            Math.min(
+              sourceIndex,
+              values.length - 1
+            )
+          ] / 255;
+
+        /*
+          Sedikit boost supaya tetap
+          terlihat meskipun volume musik
+          tidak terlalu keras.
+        */
+
+        level =
+          Math.pow(
+            level,
+            0.68
+          );
+
+      } else {
+
+        /*
+          Idle animation ketika pause.
+        */
+
+        level =
+          0.18 +
+          (
+            Math.sin(
+              now * 0.004 +
+              index * 0.9
+            ) + 1
+          ) *
+          0.08;
+      }
+
+      /*
+        Range tinggi 3px - 14px.
+      */
+
+      const height =
+        Math.max(
+          3,
+          Math.min(
+            14,
+            3 + level * 11
+          )
+        );
+
+      bar.style.height =
+        `${height}px`;
+
+      /*
+        Saat pause dibuat sedikit
+        lebih redup.
+      */
+
+      bar.style.opacity =
+        audio.paused
+          ? "0.45"
+          : "0.9";
+    }
+  );
+
+  /*
+    Dynamic Island tetap menggunakan
+    spectrum-nya sendiri.
+  */
+
+  updateIslandSpectrum(values);
+}
+
+
+
+/* =========================================================
+   ISLAND SPECTRUM
+   ========================================================= */
+
+function updateIslandSpectrum(values) {
+
+  const bars =
+    islandSpectrum.querySelectorAll(
+      "span"
+    );
+
+  const now =
+    performance.now();
+
+  bars.forEach(
+    (bar, index) => {
+
+      let level;
+
+      if (
+        values &&
+        !audio.paused
+      ) {
+
+        const sourceIndex =
+          Math.floor(
+            (index / bars.length) *
+            values.length
+          );
+
+        level =
+          values[
+            Math.min(
+              sourceIndex,
+              values.length - 1
+            )
+          ] / 255;
+
+      } else {
+
+        level =
+          0.15 +
+          (
+            Math.sin(
+              now * 0.004 +
+              index * 1.2
+            ) + 1
+          ) *
+          0.10;
+      }
+
+      const height =
+        4 +
+        level * 14;
+
+      bar.style.height =
+        `${height}px`;
+    }
+  );
+}
+
+
+/* =========================================================
+   SPECTRUM ANIMATION LOOP
+   ========================================================= */
+
+function animationLoop() {
+
+  drawSpectrum();
+
+  animationFrame =
+    requestAnimationFrame(
+      animationLoop
+    );
+}
+
+if (!animationFrame) {
+
+  animationLoop();
+
+}
+
+
+/* =========================================================
+   DYNAMIC ISLAND
+   ========================================================= */
+
+dynamicIsland.addEventListener(
+  "click",
+  () => {
+
+    dynamicIsland.classList.toggle(
+      "expanded"
+    );
+
+    clearTimeout(
+      dynamicIslandTimer
+    );
+
+    /*
+      Auto collapse after 5 seconds.
+    */
+
+    if (
+      dynamicIsland.classList.contains(
+        "expanded"
+      )
+    ) {
+
+      dynamicIslandTimer =
+        setTimeout(
+          () => {
+
+            dynamicIsland.classList.remove(
+              "expanded"
+            );
+
+          },
+          5000
+        );
+    }
+  }
+);
+
+
+/* =========================================================
+   DYNAMIC ISLAND PULSE
+   ========================================================= */
+
+function pulseDynamicIsland() {
+
+  dynamicIsland.animate(
+    [
+      {
+        transform:
+          "scale(1)"
+      },
+      {
+        transform:
+          "scale(1.045)"
+      },
+      {
+        transform:
+          "scale(1)"
+      }
+    ],
+    {
+      duration: 430,
+      easing:
+        "cubic-bezier(.16,1,.3,1)"
+    }
+  );
+}
+
+
+/* =========================================================
+   MEDIA SESSION API
+   ========================================================= */
+
+function updateMediaSession() {
+
+  if (
+    !("mediaSession" in navigator)
+  ) {
+    return;
+  }
+
+  try {
+
+    navigator.mediaSession.metadata =
+      new MediaMetadata({
+        title:
+          trackTitle.textContent ||
+          DEFAULT_TITLE,
+
+        artist:
+          currentArtist ||
+          DEFAULT_ARTIST,
+
+        album:
+          "DERBAYS",
+
+        artwork: [
+          {
+            src:
+              albumArt.src,
+            sizes:
+              "512x512",
+            type:
+              "image/jpeg"
+          }
+        ]
+      });
+
+    navigator.mediaSession.playbackState =
+      audio.paused
+        ? "paused"
+        : "playing";
+
+  } catch (error) {
+
+    console.warn(
+      "Media Session metadata error:",
+      error
+    );
+  }
+}
+
+
+/* =========================================================
+   MEDIA SESSION ACTIONS
+   ========================================================= */
+
+if (
+  "mediaSession" in navigator
+) {
+
+  try {
+
+    navigator.mediaSession.setActionHandler(
+      "play",
+      () => {
+        audio.play();
+      }
+    );
+
+  } catch (_) {}
+
+
+  try {
+
+    navigator.mediaSession.setActionHandler(
+      "pause",
+      () => {
+        audio.pause();
+      }
+    );
+
+  } catch (_) {}
+
+
+  try {
+
+    navigator.mediaSession.setActionHandler(
+      "previoustrack",
+      () => {
+        prevButton.click();
+      }
+    );
+
+  } catch (_) {}
+
+
+  try {
+
+    navigator.mediaSession.setActionHandler(
+      "nexttrack",
+      () => {
+        nextButton.click();
+      }
+    );
+
+  } catch (_) {}
+
+
+  try {
+
+    navigator.mediaSession.setActionHandler(
+      "seekbackward",
+      details => {
+
+        const amount =
+          details.seekOffset ||
+          10;
+
+        audio.currentTime =
+          Math.max(
+            0,
+            audio.currentTime - amount
+          );
+      }
+    );
+
+  } catch (_) {}
+
+
+  try {
+
+    navigator.mediaSession.setActionHandler(
+      "seekforward",
+      details => {
+
+        const amount =
+          details.seekOffset ||
+          10;
+
+        audio.currentTime =
+          Math.min(
+            audio.duration || Infinity,
+            audio.currentTime + amount
+          );
+      }
+    );
+
+  } catch (_) {}
+}
+
+
+/* =========================================================
+   OUTPUT BUTTON
+   ========================================================= */
+
+// Tombol bulat DERBAYS di bawah dipakai khusus untuk mengganti/memilih lagu.
+// Klik langsung membuka pemilih file musik dari perangkat.
+if (outputButton && audioInput) {
+  outputButton.title = "Pilih atau ganti musik dari perangkat";
+  outputButton.setAttribute("aria-label", "Pilih atau ganti musik");
+  outputButton.addEventListener("click", () => {
+    // Kosongkan nilai agar file yang sama bisa dipilih lagi.
+    audioInput.value = "";
+    audioInput.click();
+  });
+}
+
+
+/* =========================================================
+   KEYBOARD SHORTCUTS
+   ========================================================= */
+
+document.addEventListener(
+  "keydown",
+  event => {
+
+    /*
+      Jangan menangkap shortcut ketika
+      user sedang mengetik prompt/input.
+    */
+
+    const target =
+      event.target;
+
+    if (
+      target &&
+      (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA"
+      )
+    ) {
+      return;
+    }
+
+    /*
+      Space = play/pause
+    */
+
+    if (
+      event.code === "Space"
+    ) {
+
+      event.preventDefault();
+
+      togglePlay();
+    }
+
+    /*
+      ArrowLeft = -5 sec
+    */
+
+    if (
+      event.code === "ArrowLeft"
+    ) {
+
+      event.preventDefault();
+
+      if (
+        Number.isFinite(
+          audio.duration
+        )
+      ) {
+
+        audio.currentTime =
+          Math.max(
+            0,
+            audio.currentTime - 5
+          );
+      }
+    }
+
+    /*
+      ArrowRight = +5 sec
+    */
+
+    if (
+      event.code === "ArrowRight"
+    ) {
+
+      event.preventDefault();
+
+      if (
+        Number.isFinite(
+          audio.duration
+        )
+      ) {
+
+        audio.currentTime =
+          Math.min(
+            audio.duration,
+            audio.currentTime + 5
+          );
+      }
+    }
+
+    /*
+      ArrowUp = volume up
+    */
+
+    if (
+      event.code === "ArrowUp"
+    ) {
+
+      event.preventDefault();
+
+      audio.volume =
+        Math.min(
+          1,
+          audio.volume + 0.05
+        );
+
+      updateVolumeUI();
+    }
+
+    /*
+      ArrowDown = volume down
+    */
+
+    if (
+      event.code === "ArrowDown"
+    ) {
+
+      event.preventDefault();
+
+      audio.volume =
+        Math.max(
+          0,
+          audio.volume - 0.05
+        );
+
+      updateVolumeUI();
+    }
+  }
+);
+
+
+/* =========================================================
+   DOUBLE CLICK ARTWORK
+   ========================================================= */
+
+artwork.addEventListener(
+  "dblclick",
+  event => {
+
+    event.preventDefault();
+
+    /*
+      Double click toggles play.
+    */
+
+    togglePlay();
+  }
+);
+
+
+/* =========================================================
+   AUDIO ERROR
+   ========================================================= */
+
+audio.addEventListener(
+  "error",
+  () => {
+
+    showToast(
+      "Audio gagal dimuat. Cek format atau URL lagu."
+    );
+  }
+);
+
+
+/* =========================================================
+   REMOTE CORS INFORMATION
+   ========================================================= */
+
+audio.addEventListener(
+  "canplay",
+  () => {
+
+    /*
+      Try to initialize analyser.
+
+      Local files normally work nicely.
+
+      Remote audio requires a server that permits
+      the necessary CORS access if the frequency
+      analyser is expected to read the audio data.
+    */
+
+    ensureAudioAnalyser();
+
+    updateMediaSession();
+  }
+);
+
+
+/* =========================================================
+   PAGE VISIBILITY
+   ========================================================= */
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+
+    if (
+      document.visibilityState ===
+      "visible"
+    ) {
+
+    }
+  }
+);
+
+
+/* =========================================================
+   CLEAN OBJECT URLS
+   ========================================================= */
+
+window.addEventListener(
+  "beforeunload",
+  () => {
+
+    objectUrls.forEach(url => {
+
+      try {
+
+        URL.revokeObjectURL(url);
+
+      } catch (_) {}
+
+    });
+  }
+);
+
+
+/* =========================================================
+   HANDLE ARTWORK IMAGE FAILURE
+   ========================================================= */
+
+albumArt.addEventListener(
+  "error",
+  () => {
+
+    /*
+      If the supplied screenshot isn't found,
+      use a simple fallback visual.
+    */
+
+    albumArt.style.background =
+      "linear-gradient(135deg,#394e5c,#0b1e2a)";
+
+    showToast(
+      "1000848962.jpg belum ditemukan di folder."
+    );
+  }
+);
+
+
+/* =========================================================
+   HANDLE BACKGROUND FAILURE
+   ========================================================= */
+
+backgroundArt.addEventListener(
+  "error",
+  () => {
+
+    backgroundArt.style.display =
+      "none";
+  }
+);
+
+
+/* =========================================================
+   START WITH DEFAULT UI
+   ========================================================= */
+
+updatePlayUI();
+
+updateProgressUI();
+
+updateVolumeUI();
+
+updateMediaSession();
+
+
+/* =========================================================
+   OPTIONAL:
+   CLICK TITLE TO SHOW CURRENT FILE
+   ========================================================= */
+
+trackTitle.title = "Ketuk saat lagu dijeda untuk memilih lagu dari perangkat";
+trackTitle.style.cursor = "pointer";
+trackTitle.setAttribute("role", "button");
+trackTitle.setAttribute("tabindex", "0");
+
+function openSongPickerWhenPaused() {
+  if (!audio.paused) {
+    showToast("Jeda lagu terlebih dahulu untuk mengganti musik");
+    return;
+  }
+  audioInput.click();
+}
+
+trackTitle.addEventListener("click", openSongPickerWhenPaused);
+trackTitle.addEventListener("keydown", event => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openSongPickerWhenPaused();
+  }
+});
+
+
+/* =========================================================
+   OPTIONAL:
+   TOUCH FEEDBACK FOR ARTWORK
+   ========================================================= */
+
+artwork.addEventListener(
+  "pointerdown",
+  () => {
+
+    artwork.style.transform =
+      "scale(0.985)";
+  }
+);
+
+artwork.addEventListener(
+  "pointerup",
+  () => {
+
+    artwork.style.transform =
+      "";
+  }
+);
+
+artwork.addEventListener(
+  "pointercancel",
+  () => {
+
+    artwork.style.transform =
+      "";
+  }
+);
+
+
+/* =========================================================
+   END
+   ========================================================= */
+</script>
+
+</body>
+</html>
